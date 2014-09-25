@@ -16,6 +16,7 @@ project set speed {speed}
 project set "Generate Detailed MAP Report" true
 project set "Verilog Include Directories" "{verilog_include_dirs}" -process "Synthesize - XST"
 {source_files}
+{global_includes}
 project set top "{top_module}"
 """
 
@@ -27,7 +28,8 @@ process run "Generate Programming File"
 
     def __init__(self, system):
         super(Ise, self).__init__(system)
-        self.src_files    += [os.path.join(self.src_root, self.system.name, f) for f in self.system.backend.ucf_files]
+        self.src_files       += [os.path.join(self.src_root, self.system.name, f) for f in self.system.backend.ucf_files]
+        self.global_includes += [os.path.join(self.src_root, self.system.name, f) for f in self.system.backend.global_includes]
         self.work_root = os.path.join(self.build_root, 'bld-'+self.TOOL_NAME)
 
     def configure(self):
@@ -47,7 +49,7 @@ process run "Generate Programming File"
                 shutil.copyfile(os.path.join(src_dir, f),
                                 os.path.join(dst_dir, f))
             else:
-                pr_warn("File " + os.path.join(src_dir, f) + " doesn't exist")
+                utils.pr_warn("File " + os.path.join(src_dir, f) + " doesn't exist")
 
         self._write_tcl_file()
 
@@ -61,7 +63,8 @@ process run "Generate Programming File"
             speed                = self.system.backend.speed,
             top_module           = self.system.backend.top_module,
             verilog_include_dirs = '|'.join(self.include_dirs),
-            source_files = '\n'.join(['xfile add '+s for s in self.src_files])))
+            source_files         = '\n'.join(['xfile add '+s for s in self.src_files]),
+            global_includes      = '\n'.join(['xfile add '+s+' -include_global' for s in self.global_includes])))
 
         for f in self.system.backend.tcl_files:
             tcl_file.write(open(os.path.join(self.system_root, f)).read())

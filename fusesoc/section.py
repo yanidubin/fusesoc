@@ -280,6 +280,7 @@ class IseSection(ToolSection):
     def __init__(self, items=None):
         super(IseSection, self).__init__()
 
+        self._add_listitem('global_includes')
         self._add_listitem('ucf_files')
         self._add_listitem('tcl_files')
         self._add_stringitem('family')
@@ -291,6 +292,7 @@ class IseSection(ToolSection):
         if items:
             self.load_dict(items)
             self.export_files = self.ucf_files
+            self.export_files += self.global_includes
 
 class QuartusSection(ToolSection):
 

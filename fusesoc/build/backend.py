@@ -22,6 +22,7 @@ class Backend(object):
 
         self.include_dirs = []
         self.src_files = []
+        self.global_includes = []
         self.vhdl_src_files = []
         self.cm = CoreManager()
 
