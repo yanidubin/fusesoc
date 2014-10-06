@@ -104,6 +104,9 @@ class Core:
 
         src_dir = self.files_root
 
+        #Support files being copied from core dir, even if some files provided
+        alt_dir = self.core_root
+
         #FIXME: Separate tb_files to an own directory tree (src/tb/core_name ?)
         src_files = []
         if self.verilog:
@@ -115,13 +118,21 @@ class Core:
         if self.vhdl:
             src_files += self.vhdl.export()
 
+        # Hack to allow system files to be provided
+        if self.system.backend.export_files:
+            src_files += self.system.backend.export_files
+
         dirs = list(set(map(os.path.dirname,src_files)))
         for d in dirs:
             if not os.path.exists(os.path.join(dst_dir, d)):
                 os.makedirs(os.path.join(dst_dir, d))
 
         for f in src_files:
-            if(os.path.exists(os.path.join(src_dir, f))):
+            #Local file takes precedence if file found in both places
+            if(os.path.exists(os.path.join(alt_dir, f))):
+                shutil.copyfile(os.path.join(alt_dir, f), 
+                                os.path.join(dst_dir, f))
+            elif(os.path.exists(os.path.join(src_dir, f))):
                 shutil.copyfile(os.path.join(src_dir, f), 
                                 os.path.join(dst_dir, f))
             else:
