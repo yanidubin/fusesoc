@@ -293,7 +293,8 @@ class IseSection(ToolSection):
 
         if items:
             self.load_dict(items)
-            self.export_files = self.ucf_files
+            self.export_files = []
+            self.export_files += self.ucf_files
             self.export_files += self.global_includes
             self.export_files += self.system_files
             self.export_files += self.custom_scripts
