@@ -281,6 +281,7 @@ class IseSection(ToolSection):
         super(IseSection, self).__init__()
 
         self._add_listitem('global_includes')
+        self._add_listitem('generated_srcs')
         self._add_listitem('ucf_files')
         self._add_listitem('tcl_files')
         self._add_listitem('system_files')
