@@ -21,9 +21,13 @@ project set "Verilog Include Directories" "{verilog_include_dirs}" -process "Syn
 project set top "{top_module}"
 """
 
-    TCL_FUNCTIONS = """
+    TCL_FUNCTION_SYNTH = """
+process run "Synthesize - XST"
+"""
+    TCL_FUNCTIONS_BUILD = """
 process run "Generate Programming File"
 """
+
 
 # @YLD:TODO fix hackiness:
 # * support lang as verilog or vhdl?
@@ -32,6 +36,29 @@ process run "Generate Programming File"
 # * determine system.mhs filename from config also?
     PLATGEN_CMD_TEMPLATE = """
 -p {device}{package}{speed} -lang verilog -intstyle pa -toplevel no -ti system_i -msg __xps/ise/xmsgprops.lst system.mhs
+"""
+# @YLD:TODO - does output filename matter? Required for next steps?
+    SYNTH_CMD_TEMPLATE = """
+-ifn {xst_script} -ofn parallella_z7_top.srp -intstyle ise
+"""
+    TCL_FILE2_TEMPLATE = """
+project open {design}
+
+"""
+
+# @YLD:TODO - think vlgincdir is plain wrong.
+    XST_FILE_TEMPLATE = """
+set -loop_iteration_limit 1000
+run
+-ifn parallella_z7_top.prj
+-top parallella_z7_top
+-p  {device}{package}{speed}-1
+-ofn parallella_z7_top.ngc
+-vlgincdir {../src/parallella/data}
+-sd \{implementation\}
+-opt_mode speed
+-opt_level 1
+-netlist_hierarchy rebuilt
 """
 
     TOOL_NAME = 'ise'
@@ -80,8 +107,28 @@ process run "Generate Programming File"
         for f in self.system.backend.tcl_files:
             tcl_file.write(open(os.path.join(self.system_root, f)).read())
 
-        tcl_file.write(self.TCL_FUNCTIONS)
+        # TODO - put a sensible variable in config!
+        if self.system.backend.system_files:
+            tcl_file.write(self.TCL_FUNCTION_SYNTH)
+        else:
+            tcl_file.write(self.TCL_FUNCTIONS_BUILD)
         tcl_file.close()
+
+        # Part of Parallella workaround - hopefully temporary - split in twain
+        if self.system.backend.system_files:
+            tcl_file2 = open(os.path.join(self.work_root, self.system.name+'2.tcl'),'w')
+            tcl_file2.write(self.TCL_FILE2_TEMPLATE.format(
+                design               = self.system.name))
+            tcl_file2.write(self.TCL_FUNCTIONS_BUILD)
+            tcl_file2.close()
+
+            xst_file = open(os.path.join(self.work_root, self.system.name+'-custom.xst'),'w')
+            xst_file.write(self.XST_FILE_TEMPLATE.format(
+                device               = self.system.backend.device,
+                package              = self.system.backend.package,
+                speed                = self.system.backend.speed))
+ 
+        self.extrasynth()
 
     def build(self, args):
         super(Ise, self).build(args)
@@ -93,6 +140,14 @@ process run "Generate Programming File"
         utils.Launcher('xtclsh', [os.path.join(self.work_root, self.system.name+'.tcl')],
                            cwd = self.work_root,
                            errormsg = "Failed to make FPGA load module").run()
+
+        # Parallella workaround
+        if self.system.backend.xst_script:
+                self.extrasynth()
+                utils.Launcher('xtclsh', [os.path.join(self.work_root, self.system.name+'2.tcl')],
+                           cwd = self.work_root,
+                           errormsg = "Failed to make FPGA load module").run()
+
         super(Ise, self).done()
 
     def pgm(self, remaining):
@@ -133,4 +188,17 @@ process run "Generate Programming File"
             if f.endswith('.ngc'):
                 shutil.copyfile(os.path.join(self.work_root, "implementation", f),
                                 os.path.join(self.work_root, f))
+
+    # Workaround for Parallella, hopefully temporary. xtclsh otherwise generates own script and uses it, which is no good.
+    def extrasynth(self):
+        cmdline = []
+        script = os.path.join(self.src_root, self.system.backend.xst_script)
+        utils.pr_warn("File " + script)
+        cmdline = self.SYNTH_CMD_TEMPLATE.format(
+            xst_script           = script).split()
+        utils.pr_warn("Cmd " + cmdline.join(' '))
+ 
+        utils.Launcher('xst', cmdline,
+                       cwd = self.work_root,
+                       errormsg = "Failed to run %s" % cmdline).run()
 

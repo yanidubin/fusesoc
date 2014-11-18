@@ -285,12 +285,12 @@ class IseSection(ToolSection):
         self._add_listitem('ucf_files')
         self._add_listitem('tcl_files')
         self._add_listitem('system_files')
-        self._add_listitem('custom_scripts')
         self._add_stringitem('family')
         self._add_stringitem('device')
         self._add_stringitem('package')
         self._add_stringitem('speed')
         self._add_stringitem('top_module')
+        self._add_stringitem('xst_script')
 
         if items:
             self.load_dict(items)
@@ -298,7 +298,7 @@ class IseSection(ToolSection):
             self.export_files += self.ucf_files
             self.export_files += self.global_includes
             self.export_files += self.system_files
-            self.export_files += self.custom_scripts
+            self.export_files.append(self.xst_script)
 
 class QuartusSection(ToolSection):
 
